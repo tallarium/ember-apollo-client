@@ -251,29 +251,26 @@ export default class ApolloService extends Service {
 
     const obj = new EmberApolloSubscription();
 
-    return waitForPromise(
-      new RSVP.Promise((resolve, reject) => {
-        let subscription = observable.subscribe({
-          next: (newData) => {
-            let dataToSend = extractNewData(resultKey, newData);
-            if (dataToSend === null) {
-              // see comment in extractNewData
-              return;
-            }
+    return new RSVP.Promise((resolve, reject) => {
+      let subscription = observable.subscribe({
+        next: (newData) => {
+          let dataToSend = extractNewData(resultKey, newData);
+          if (dataToSend === null) {
+            // see comment in extractNewData
+            return;
+          }
 
-            run(() => obj._onNewData(dataToSend));
-          },
-          error(e) {
+          run(() => obj._onNewData(dataToSend));
+          resolve(obj);
+        },
+        error(e) {
             reject(e);
           },
         });
-
         obj._apolloClientSubscription = subscription;
-
-        resolve(obj);
-      })
-    );
+    });
   }
+
 
   /**
    * Executes a single `query` on the Apollo client. The resolved object will
