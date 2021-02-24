@@ -240,40 +240,43 @@ export default class ApolloService extends Service {
    * the resolved data when the route or component is torn down. That tells
    * Apollo to stop trying to send updated data to a non-existent listener.
    *
+   * @callback errorCallback
+   * @param {Error} error
+   *
    * @method subscribe
    * @param {!Object} opts The query options used in the Apollo Client subscribe.
    * @param {String} resultKey The key that will be returned from the resulting response data. If null or undefined, the entire response data will be returned.
+   * @param {errorCallback} errorHandle The callback that handles subscription errors.
    * @return {!Promise}
    * @public
    */
-  subscribe(opts, resultKey = null) {
+  subscribe(opts, resultKey = null, errorHandle = null) {
     const observable = this.client.subscribe(opts);
-
     const obj = new EmberApolloSubscription();
 
-    return waitForPromise(
-      new RSVP.Promise((resolve, reject) => {
-        let subscription = observable.subscribe({
-          next: (newData) => {
-            let dataToSend = extractNewData(resultKey, newData);
-            if (dataToSend === null) {
-              // see comment in extractNewData
-              return;
-            }
+    return waitForPromise(new RSVP.Promise((resolve, reject) => {
+      let subscription = observable.subscribe({
+        next: (newData) => {
+          let dataToSend = extractNewData(resultKey, newData);
+          if (dataToSend === null) {
+            // see comment in extractNewData
+            return;
+          }
 
-            run(() => obj._onNewData(dataToSend));
-          },
-          error(e) {
-            reject(e);
-          },
+          run(() => obj._onNewData(dataToSend));
+        },
+        error(e) {
+          if (errorHandle) {
+            errorHandle(e);
+          }
+          reject(e);
+        }
         });
-
         obj._apolloClientSubscription = subscription;
-
         resolve(obj);
-      })
-    );
+    }));
   }
+
 
   /**
    * Executes a single `query` on the Apollo client. The resolved object will
